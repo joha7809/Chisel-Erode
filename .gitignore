@@ -51,4 +51,8 @@ tags
 *.iws
 .idea
 out
+<<<<<<< Updated upstream
 .bsp/
+=======
+.scalafmt.conf
+>>>>>>> Stashed changes
