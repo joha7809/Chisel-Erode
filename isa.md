@@ -29,6 +29,23 @@
 | Jump if equal        | `JEQ 8, R2, R3`   | `if (R2 == R3) goto inst. 8`  |
 | Jump if less than    | `JLT 9, R2, R3`   | `if (R2 < R3) goto inst. 9`   |
 | Jump if greater than | `JGT 10, R2, R3`  | `if (R2 > R3) goto inst. 10`  |
-| Jump if eq. to value | `JEVT 10, R2, 10` | `if (R2 == 10) goto inst. 10` |
+| Jump if eq. to value | `JETV 10, R2, 10` | `if (R2 == 10) goto inst. 10` |
 | No operation         | `NOP`             | do nothing                    |
 | End execution        | `END`             | terminates execution          |
+
+## Labels
+
+Labels are defined by placing a name followed by a colon at the beginning of a line. They serve as targets for jump instructions.
+When parsed into machine code, labels are replaced with the corresponding instruction address, which is determined by the position of the label in the source code.
+Example:
+
+```
+JEQ loop_start, R1, R2
+start:          # This is a label
+    ADD R1, R2, R3
+    JEQ end, R1, R4
+    SUB R1, R1, R5
+
+end:            # Another label
+    END
+```
