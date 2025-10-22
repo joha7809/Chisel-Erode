@@ -26,10 +26,10 @@
 | Instruction          | Syntax (Example)  | Meaning (Example)             |
 | -------------------- | ----------------- | ----------------------------- |
 | Jump                 | `JR 7`            | `goto inst. 7`                |
-| Jump if equal        | `JEQ 8, R2, R3`   | `if (R2 == R3) goto inst. 8`  |
-| Jump if less than    | `JLT 9, R2, R3`   | `if (R2 < R3) goto inst. 9`   |
-| Jump if greater than | `JGT 10, R2, R3`  | `if (R2 > R3) goto inst. 10`  |
-| Jump if eq. to value | `JETV 10, R2, 10` | `if (R2 == 10) goto inst. 10` |
+| Jump if equal        | `JEQ R2, R3, 8`   | `if (R2 == R3) goto inst. 8`  |
+| Jump if less than    | `JLT R2, R3, 9`   | `if (R2 < R3) goto inst. 9`   |
+| Jump if greater than | `JGT R2, R3, 10`  | `if (R2 > R3) goto inst. 10`  |
+| Jump if eq. to value | `JETV R2, 10, 15` | `if (R2 == 10) goto inst. 15` |
 | No operation         | `NOP`             | do nothing                    |
 | End execution        | `END`             | terminates execution          |
 
@@ -40,7 +40,7 @@ When parsed into machine code, labels are replaced with the corresponding instru
 Example:
 
 ```
-JEQ loop_start, R1, R2
+JEQ R1, R2 end
 start:          # This is a label
     ADD R1, R2, R3
     JEQ end, R1, R4
@@ -49,3 +49,17 @@ start:          # This is a label
 end:            # Another label
     END
 ```
+
+# Machine Code Types
+
+Below are the different formats of machine code instructions, showing how bits are allocated for each field.
+
+| **Type** | **Format (Bit Allocation)**                                     |
+| :------- | :-------------------------------------------------------------- |
+| **R**    | `OPCODE(5)` · `REGISTER(5)` · `REGISTER(5)` · `REGISTER(5)`     |
+| **RI**   | `OPCODE(5)` · `REGISTER(5)` · `IMMEDIATE(22)`                   |
+| **RRI**  | `OPCODE(5)` · `REGISTER(5)` · `REGISTER(5)` · `IMMEDIATE(17)`   |
+| **RII**  | `OPCODE(5)` · `REGISTER(5)` · `IMMEDIATE(11)` · `IMMEDIATE(11)` |
+| **I**    | `OPCODE(5)` · `IMMEDIATE(27)`                                   |
+
+> 💡 _All bit widths are shown in parentheses. "IMMEDIATE" fields represent literal constant values encoded directly in the instruction._
