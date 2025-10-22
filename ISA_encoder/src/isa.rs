@@ -1,5 +1,8 @@
+use crate::errors::ParseError;
+
 pub const REGISTER_LIMIT: usize = 32; //0..31
 pub const REGISTER_BIT: usize = 32;
+type OperandValidator = fn(&[Operand]) -> Result<(), ParseError>;
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 #[allow(clippy::upper_case_acronyms)]
@@ -30,9 +33,9 @@ pub enum Opcode {
 
 #[derive(Debug, Clone, Copy)]
 pub enum Operand {
-    Register(u8),   // 0..31
-    Immediate(i32), // -2^31..2^31-1
-    Address(u16),   // 0..65535
+    Register(u8),     // 0..31
+    Immediate(usize), // -2^31..2^31-1
+    Address(u16),     // 0..65535
 }
 
 #[derive(Debug, Clone)]
@@ -63,6 +66,7 @@ pub enum InstrFormat {
     RRI, // opcode + reg + reg + imm
     RII, // opcode + reg + imm + imm
     I,   // opcode + imm
+    NoOP,
 }
 
 impl Opcode {
@@ -148,16 +152,107 @@ impl Opcode {
 
             Opcode::NOT => InstrFormat::R2, // opcode + reg + reg
 
-            Opcode::ADDI | Opcode::SUBI | Opcode::LI => InstrFormat::RI, // opcode + reg + imm
+            Opcode::LI => InstrFormat::RI, // opcode + reg + imm
+            Opcode::ADDI | Opcode::SUBI => InstrFormat::RRI,
 
             // Data transfer
-            Opcode::LD | Opcode::SD => InstrFormat::RRI, // opcode + reg + reg + imm (assuming memory offset as imm)
+            Opcode::LD | Opcode::SD => InstrFormat::R2, // opcode + reg + reg + imm (assuming memory offset as imm)
 
             // Control flow
             Opcode::JR => InstrFormat::I, // opcode + imm (jump target)
-            Opcode::JEQ | Opcode::JLT | Opcode::JGT => InstrFormat::RRI, // opcode + reg + reg + imm (jump target)
-            Opcode::JETV => InstrFormat::RII,                            // opcode + reg + imm + imm
-            Opcode::NOP | Opcode::END => InstrFormat::I, // opcode + imm (NOP = 0, END = 27-bit placeholder)
+            Opcode::JLT => InstrFormat::RII,
+            Opcode::JEQ | Opcode::JGT => InstrFormat::RRI, // opcode + reg + reg + imm (jump target)
+            Opcode::JETV => InstrFormat::RII,              // opcode + reg + imm + imm
+            Opcode::NOP | Opcode::END => InstrFormat::NoOP, // opcode + imm (NOP = 0, END = 27-bit placeholder)
         }
+    }
+    pub fn operand_validator(self) -> OperandValidator {
+        match self.instruction_format() {
+            crate::isa::InstrFormat::R3 => validate_r3,
+            crate::isa::InstrFormat::R2 => validate_r2,
+            crate::isa::InstrFormat::RI => validate_ri,
+            crate::isa::InstrFormat::RRI => validate_rri,
+            crate::isa::InstrFormat::RII => validate_rii,
+            crate::isa::InstrFormat::I => validate_i,
+            crate::isa::InstrFormat::NoOP => |_ops: &[Operand]| Ok(()),
+        }
+    }
+}
+
+fn validate_r3(ops: &[Operand]) -> Result<(), ParseError> {
+    if ops.len() != 3 {
+        return Err(ParseError::OperandCountMismatch {
+            expected: 3,
+            found: ops.len(),
+        });
+    }
+    match (&ops[0], &ops[1], &ops[2]) {
+        (Operand::Register(_), Operand::Register(_), Operand::Register(_)) => Ok(()),
+        _ => Err(ParseError::OperandTypeMismatch),
+    }
+}
+
+fn validate_r2(ops: &[Operand]) -> Result<(), ParseError> {
+    if ops.len() != 2 {
+        return Err(ParseError::OperandCountMismatch {
+            expected: 2,
+            found: ops.len(),
+        });
+    }
+    match (&ops[0], &ops[1]) {
+        (Operand::Register(_), Operand::Register(_)) => Ok(()),
+        _ => Err(ParseError::OperandTypeMismatch),
+    }
+}
+
+fn validate_ri(ops: &[Operand]) -> Result<(), ParseError> {
+    if ops.len() != 2 {
+        return Err(ParseError::OperandCountMismatch {
+            expected: 2,
+            found: ops.len(),
+        });
+    }
+    match (&ops[0], &ops[1]) {
+        (Operand::Register(_), Operand::Immediate(_)) => Ok(()),
+        _ => Err(ParseError::OperandTypeMismatch),
+    }
+}
+
+fn validate_rri(ops: &[Operand]) -> Result<(), ParseError> {
+    if ops.len() != 3 {
+        return Err(ParseError::OperandCountMismatch {
+            expected: 3,
+            found: ops.len(),
+        });
+    }
+    match (&ops[0], &ops[1], &ops[2]) {
+        (Operand::Register(_), Operand::Register(_), Operand::Immediate(_)) => Ok(()),
+        _ => Err(ParseError::OperandTypeMismatch),
+    }
+}
+
+fn validate_rii(ops: &[Operand]) -> Result<(), ParseError> {
+    if ops.len() != 3 {
+        return Err(ParseError::OperandCountMismatch {
+            expected: 3,
+            found: ops.len(),
+        });
+    }
+    match (&ops[0], &ops[1], &ops[2]) {
+        (Operand::Register(_), Operand::Immediate(_), Operand::Immediate(_)) => Ok(()),
+        _ => Err(ParseError::OperandTypeMismatch),
+    }
+}
+
+fn validate_i(ops: &[Operand]) -> Result<(), ParseError> {
+    if ops.len() != 1 {
+        return Err(ParseError::OperandCountMismatch {
+            expected: 1,
+            found: ops.len(),
+        });
+    }
+    match &ops[0] {
+        Operand::Immediate(_) => Ok(()),
+        _ => Err(ParseError::OperandTypeMismatch),
     }
 }

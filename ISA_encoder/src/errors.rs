@@ -15,6 +15,12 @@ pub enum ParseError {
         label: String,
         position: usize,
     },
+    OperandCountMismatch {
+        expected: usize,
+        found: usize
+    },
+    OperandTypeMismatch,
+
 }
 
 impl std::fmt::Display for ParseError {
@@ -47,6 +53,16 @@ impl std::fmt::Display for ParseError {
                     "Parse Error at position {}: Undefined label '{}'",
                     position, label
                 )
+            }
+            ParseError::OperandCountMismatch { expected, found } => {
+                write!(
+                    f,
+                    "Parse Error: Operand count mismatch, expected {}, found {}",
+                    expected, found
+                )
+            }
+            ParseError::OperandTypeMismatch => {
+                write!(f, "Parse Error: Operand type mismatch")
             }
         }
     }
