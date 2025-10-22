@@ -7,7 +7,7 @@ use crate::isa::{self, Opcode, Operand, REGISTER_LIMIT};
 pub enum TokenKind {
     Opcode(Opcode),
     Register(usize),
-    Immediate(i32),
+    Immediate(usize),
     LabelDef(String), // e.g., "loop:" defines a label
     LabelRef(String), // e.g., used in a jump instruction
     Comma,
@@ -39,10 +39,10 @@ impl Display for Token {
 }
 
 #[derive(Debug, PartialEq, Clone)]
-struct Span {
-    start: usize,
-    end: usize,
-    line: usize,
+pub struct Span {
+    pub start: usize,
+    pub end: usize,
+    pub line: usize,
 }
 
 impl From<(usize, usize, usize)> for Span {
@@ -115,6 +115,8 @@ impl<'a> Lexer<'a> {
     }
 
     fn parse_comment(&mut self, start: usize) -> Token {
+        // Safely consume '#'
+        self.chars.next();
         let comment: String = self
             .chars
             .by_ref()
@@ -160,7 +162,7 @@ impl<'a> Lexer<'a> {
     fn parse_number(&mut self, start: usize) -> Token {
         let mut number = String::with_capacity(4);
         while let Some(&(_, c)) = self.chars.peek() {
-            if c.is_ascii_digit() {
+            if c.is_ascii_digit() || c == '-' {
                 number.push(c);
                 self.chars.next();
             } else {
@@ -168,7 +170,7 @@ impl<'a> Lexer<'a> {
             }
         }
 
-        let value = number.parse::<i32>().unwrap();
+        let value = number.parse::<usize>().unwrap();
         Token {
             kind: TokenKind::Immediate(value),
             span: (start, start + number.len(), self.line).into(),
@@ -221,5 +223,218 @@ impl<'a> Lexer<'a> {
             kind,
             span: (start, start + len, self.line).into(),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use crate::isa::Opcode;
+
+    fn lex_tokens(input: &str) -> Vec<TokenKind> {
+        Lexer::new(input)
+            .lex()
+            .into_iter()
+            .map(|t| t.kind)
+            .collect()
+    }
+
+    #[test]
+    fn test_arithmetic_instructions() {
+        let input = "
+            ADD R1, R2, R3
+            SUB R4, R5, R6
+            MULT R7, R8, R9
+            ADDI R10, R11, 42
+            SUBI R12, R13, -7
+            AND R1, R2, R3
+            OR R4, R5, R6
+            NOT R7, R8
+        ";
+
+        let expected = vec![
+            TokenKind::Opcode(Opcode::ADD),
+            TokenKind::Register(1),
+            TokenKind::Comma,
+            TokenKind::Register(2),
+            TokenKind::Comma,
+            TokenKind::Register(3),
+            TokenKind::Opcode(Opcode::SUB),
+            TokenKind::Register(4),
+            TokenKind::Comma,
+            TokenKind::Register(5),
+            TokenKind::Comma,
+            TokenKind::Register(6),
+            TokenKind::Opcode(Opcode::MULT),
+            TokenKind::Register(7),
+            TokenKind::Comma,
+            TokenKind::Register(8),
+            TokenKind::Comma,
+            TokenKind::Register(9),
+            TokenKind::Opcode(Opcode::ADDI),
+            TokenKind::Register(10),
+            TokenKind::Comma,
+            TokenKind::Register(11),
+            TokenKind::Comma,
+            TokenKind::Immediate(42),
+            TokenKind::Opcode(Opcode::SUBI),
+            TokenKind::Register(12),
+            TokenKind::Comma,
+            TokenKind::Register(13),
+            TokenKind::Comma,
+            TokenKind::Immediate(7),
+            TokenKind::Opcode(Opcode::AND),
+            TokenKind::Register(1),
+            TokenKind::Comma,
+            TokenKind::Register(2),
+            TokenKind::Comma,
+            TokenKind::Register(3),
+            TokenKind::Opcode(Opcode::OR),
+            TokenKind::Register(4),
+            TokenKind::Comma,
+            TokenKind::Register(5),
+            TokenKind::Comma,
+            TokenKind::Register(6),
+            TokenKind::Opcode(Opcode::NOT),
+            TokenKind::Register(7),
+            TokenKind::Comma,
+            TokenKind::Register(8),
+        ];
+
+        assert_eq!(lex_tokens(input), expected);
+    }
+
+    #[test]
+    fn test_data_transfer() {
+        let input = "
+            LI R1, 100
+            LD R2, R3
+            SD R4, R5
+        ";
+
+        let expected = vec![
+            TokenKind::Opcode(Opcode::LI),
+            TokenKind::Register(1),
+            TokenKind::Comma,
+            TokenKind::Immediate(100),
+            TokenKind::Opcode(Opcode::LD),
+            TokenKind::Register(2),
+            TokenKind::Comma,
+            TokenKind::Register(3),
+            TokenKind::Opcode(Opcode::SD),
+            TokenKind::Register(4),
+            TokenKind::Comma,
+            TokenKind::Register(5),
+        ];
+
+        assert_eq!(lex_tokens(input), expected);
+    }
+
+    #[test]
+    fn test_control_flow() {
+        let input = "
+            JR 10
+            JEQ 12, R1, R2
+            JLT 15, R3, R4
+            JGT 20, R5, R6
+            JETV 25, R7, 50
+            NOP
+            END
+        ";
+
+        let expected = vec![
+            TokenKind::Opcode(Opcode::JR),
+            TokenKind::Immediate(10),
+            TokenKind::Opcode(Opcode::JEQ),
+            TokenKind::Immediate(12),
+            TokenKind::Comma,
+            TokenKind::Register(1),
+            TokenKind::Comma,
+            TokenKind::Register(2),
+            TokenKind::Opcode(Opcode::JLT),
+            TokenKind::Immediate(15),
+            TokenKind::Comma,
+            TokenKind::Register(3),
+            TokenKind::Comma,
+            TokenKind::Register(4),
+            TokenKind::Opcode(Opcode::JGT),
+            TokenKind::Immediate(20),
+            TokenKind::Comma,
+            TokenKind::Register(5),
+            TokenKind::Comma,
+            TokenKind::Register(6),
+            TokenKind::Opcode(Opcode::JETV),
+            TokenKind::Immediate(25),
+            TokenKind::Comma,
+            TokenKind::Register(7),
+            TokenKind::Comma,
+            TokenKind::Immediate(50),
+            TokenKind::Opcode(Opcode::NOP),
+            TokenKind::Opcode(Opcode::END),
+        ];
+
+        assert_eq!(lex_tokens(input), expected);
+    }
+
+    #[test]
+    fn test_labels_and_comments() {
+        let input = "
+            start:
+                ADD R1, R2, R3  # addition
+            loop_start:
+                SUB R4, R5, R6
+            end:
+                END
+        ";
+
+        let expected = vec![
+            TokenKind::LabelDef("start".to_string()),
+            TokenKind::Opcode(Opcode::ADD),
+            TokenKind::Register(1),
+            TokenKind::Comma,
+            TokenKind::Register(2),
+            TokenKind::Comma,
+            TokenKind::Register(3),
+            TokenKind::Comment(" addition".to_string()),
+            TokenKind::LabelDef("loop_start".to_string()),
+            TokenKind::Opcode(Opcode::SUB),
+            TokenKind::Register(4),
+            TokenKind::Comma,
+            TokenKind::Register(5),
+            TokenKind::Comma,
+            TokenKind::Register(6),
+            TokenKind::LabelDef("end".to_string()),
+            TokenKind::Opcode(Opcode::END),
+        ];
+
+        assert_eq!(lex_tokens(input), expected);
+    }
+
+    #[test]
+    fn test_edge_cases() {
+        let input = "
+            ADDI R1, R2, -15
+            ADD R16, R1, R2
+            loop_1: NOP
+        ";
+
+        let expected = vec![
+            TokenKind::Opcode(Opcode::ADDI),
+            TokenKind::Register(1),
+            TokenKind::Comma,
+            TokenKind::Register(2),
+            TokenKind::Comma,
+            TokenKind::Immediate(15),
+            TokenKind::Opcode(Opcode::ADD),
+            TokenKind::Register(16),
+            TokenKind::Comma,
+            TokenKind::Register(1),
+            TokenKind::Comma,
+            TokenKind::Register(2),
+            TokenKind::LabelDef("loop_1".to_string()),
+            TokenKind::Opcode(Opcode::NOP),
+        ];
+
+        assert_eq!(lex_tokens(input), expected);
     }
 }

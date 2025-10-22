@@ -56,7 +56,8 @@ Below are the different formats of machine code instructions, showing how bits a
 
 | **Type** | **Format (Bit Allocation)**                                     |
 | :------- | :-------------------------------------------------------------- |
-| **R**    | `OPCODE(5)` · `REGISTER(5)` · `REGISTER(5)` · `REGISTER(5)`     |
+| **R2**   | `OPCODE(5)` · `REGISTER(5)` · `REGISTER(5)`                     |
+| **R3**   | `OPCODE(5)` · `REGISTER(5)` · `REGISTER(5)` · `REGISTER(5)`     |
 | **RI**   | `OPCODE(5)` · `REGISTER(5)` · `IMMEDIATE(22)`                   |
 | **RRI**  | `OPCODE(5)` · `REGISTER(5)` · `REGISTER(5)` · `IMMEDIATE(17)`   |
 | **RII**  | `OPCODE(5)` · `REGISTER(5)` · `IMMEDIATE(11)` · `IMMEDIATE(11)` |
