@@ -2,165 +2,133 @@ use std::collections::HashMap;
 
 use crate::{
     errors::ParseError,
-    isa::{Instruction, Opcode, Operand},
+    isa::{Instruction, Opcode, Operand, REGISTER_LIMIT, Spanned},
     lexer::{Token, TokenKind},
 };
 
 pub struct Parser {
-    tokens: Vec<Token>,
-    position: usize,
+    tokens: std::iter::Peekable<std::vec::IntoIter<Token>>,
 }
 /// Returns a vec of instructions.
 impl Parser {
     pub fn new(tokens: Vec<Token>) -> Self {
         Parser {
-            tokens,
-            position: 0,
+            tokens: tokens.into_iter().peekable(),
         }
     }
 
-    fn peek(&self) -> Option<&Token> {
-        self.tokens.get(self.position)
+    fn peek(&mut self) -> Option<&Token> {
+        self.tokens.peek()
     }
 
-    fn next(&mut self) -> Option<&Token> {
-        let tok = self.tokens.get(self.position);
-        if tok.is_some() {
-            self.position += 1;
-        }
-        tok
+    fn next(&mut self) -> Option<Token> {
+        self.tokens.next()
     }
 
-    fn set_pos(&mut self, pos: usize) {
-        self.position = pos;
-    }
-
-    fn expect(&mut self, kind: TokenKind) -> Result<&Token, ParseError> {
-        match self.next() {
-            Some(tok) if tok.kind == kind => Ok(tok),
-            Some(tok) => Err(ParseError::UnexpectedToken {
-                expected: format!("{:?}", kind),
-                found: format!("{:?}", tok.kind),
-                position: tok.span.start,
-            }),
-            None => Err(ParseError::UnexpectedEndOfInput),
-        }
-    }
-
-    // We need to handle label logic cleverly
-    // Which datatype can we use for key of str and value of index of the label instructions
     pub fn parse_instructions(&mut self) -> Result<Vec<Instruction>, ParseError> {
-        // Entry point for parsing logic
-        // At each opcode, we parse_operands and collect the opcode
-        let mut instructions: Vec<Instruction> = Vec::new();
-        let label_map = self.generate_label_map()?;
-        self.set_pos(0); // reset position for actual parsing
-        while let Some(token) = self.peek() {
-            // We need to skip untill opcode
-            match &token.kind {
+        // First pass: collect raw instructions with label positions
+        let mut instructions = Vec::with_capacity(20);
+        let mut labels = HashMap::with_capacity(2);
+
+        while let Some(token) = self.next() {
+            match token.kind {
+                TokenKind::LabelDef(name) => {
+                    if labels.insert(name.clone(), instructions.len()).is_some() {
+                        return Err(ParseError::DuplicateLabel {
+                            label: name,
+                            span: token.span,
+                        });
+                    }
+                }
                 TokenKind::Opcode(opcode) => {
-                    let opcode = *opcode;
-                    self.next(); // consume the opcode token
-                    let operands = self.parse_operands(&label_map)?;
-                    // DEBUG PRINT WHAT IS GOING on
-                    println!("Parsed Opcode: {:?}, Operands: {:?}", opcode, operands);
-                    opcode.operand_validator()(&operands)?; // validate immediately
-                    instructions.push(Instruction { opcode, operands });
+                    let operands = self.parse_operands()?;
+                    instructions.push(Instruction {
+                        opcode: Spanned::new(opcode, token.span),
+                        operands,
+                    });
                 }
-                _ => {
-                    self.next(); // consume non-opcode tokens
-                }
+                TokenKind::Comment(_) | TokenKind::Terminator => continue,
+                _ => {} // handle unexpected tokens
             }
         }
+
+        // Second pass: resolve label references
+        resolve_labels(&mut instructions, &labels)?;
+
+        // Third pass: validate
+        validate_instructions(&instructions)?;
 
         Ok(instructions)
     }
 
-    /// Parse operands for a specific opcode. Resolves labels to immediate indices.
-    fn parse_operands(
-        &mut self,
-        label_map: &HashMap<String, usize>,
-    ) -> Result<Vec<Operand>, ParseError> {
-        let mut operands: Vec<Operand> = Vec::with_capacity(3);
+    /// Parse operands for a specific opcode.
+    fn parse_operands(&mut self) -> Result<Vec<Spanned<Operand>>, ParseError> {
+        let mut operands = Vec::new();
+
         while let Some(token) = self.peek() {
             match &token.kind {
-                TokenKind::Register(reg_num) => {
-                    operands.push(Operand::Register(*reg_num as u8));
-                    self.next();
-                }
-                TokenKind::Immediate(imm_val) => {
-                    operands.push(Operand::Immediate(*imm_val));
-                    self.next();
-                }
-                TokenKind::LabelRef(label_name) => {
-                    if let Some(idx) = label_map.get(label_name) {
-                        operands.push(Operand::Immediate(*idx));
-                        self.next();
-                    } else {
-                        return Err(ParseError::UndefinedLabel {
-                            label: label_name.clone(),
-                            position: token.span.start,
-                        });
+                TokenKind::Register(r) => {
+                    if *r >= REGISTER_LIMIT {
+                        return Err(ParseError::InvalidRegister { span: token.span });
                     }
-                }
-                TokenKind::Comma
-                | TokenKind::Comment(_)
-                | TokenKind::Terminator
-                | TokenKind::LabelDef(_) => {
-                    // Skip separators/comments/label defs during operand parsing
+
+                    operands.push(Spanned::new(Operand::Register(*r as u8), token.span));
+
                     self.next();
                 }
-                TokenKind::Opcode(_) => {
-                    // Next instruction begins; insufficient operands
-                    break;
+                TokenKind::Immediate(i) => {
+                    operands.push(Spanned::new(Operand::Immediate(*i), token.span));
+                    self.next();
                 }
+                TokenKind::LabelRef(label) => {
+                    // Store as placeholder, resolve later
+                    operands.push(Spanned::new(Operand::LabelRef(label.clone()), token.span));
+                    self.next();
+                }
+                TokenKind::Comma => {
+                    self.next(); // skip commas
+                }
+                // Stop conditions
+                TokenKind::Opcode(_) | TokenKind::LabelDef(_) => break,
+                _ => {
+                    self.next();
+                } // skip comments, terminators
             }
         }
 
         Ok(operands)
     }
-
-    /// First pass, simply scans the token stream for label def, and maps them to its
-    /// corresponding line index. When the instructions are parsed, all comments, comma etc, are
-    /// omitted and thus the row index will correspond to the index of the instruction to the
-    /// label
-    pub fn generate_label_map(&mut self) -> Result<HashMap<String, usize>, ParseError> {
-        let mut label_map = std::collections::HashMap::new();
-        let mut row_index: usize = 0;
-
-        for token in self.tokens.iter() {
-            match &token.kind {
-                TokenKind::LabelDef(name) => {
-                    if label_map.contains_key(name) {
-                        return Err(ParseError::DuplicateLabel {
-                            label: name.clone(),
-                            position: token.span.start,
-                        });
-                    }
-                    label_map.insert(name.clone(), row_index);
-                }
-                TokenKind::Opcode(_) => {
-                    row_index += 1;
-                }
-                _ => {}
-            }
-        }
-
-        Ok(label_map)
-    }
 }
 
-fn expected_operand_count(opcode: Opcode) -> usize {
-    match opcode {
-        Opcode::NOP | Opcode::END => 0,
-        _ => match opcode.instruction_format() {
-            crate::isa::InstrFormat::R3 => 3,
-            crate::isa::InstrFormat::R2 => 2,
-            crate::isa::InstrFormat::RI => 2,
-            crate::isa::InstrFormat::RRI => 3,
-            crate::isa::InstrFormat::RII => 3,
-            crate::isa::InstrFormat::I => 1,
-            crate::isa::InstrFormat::NoOP => 0,
-        },
+fn validate_instructions(instructions: &[Instruction]) -> Result<(), ParseError> {
+    for instr in instructions {
+        instr
+            .opcode
+            .as_ref()
+            .instruction_format()
+            .validate(&instr.operands, &instr.get_total_span())?;
     }
+    Ok(())
+}
+
+fn resolve_labels(
+    instructions: &mut [Instruction],
+    labels: &HashMap<String, usize>,
+) -> Result<(), ParseError> {
+    // For each opcode that is a label reference, replace with immediate row_index
+    for instr in instructions.iter_mut() {
+        for op in instr.operands.iter_mut() {
+            if let Operand::LabelRef(label) = op.as_ref() {
+                if let Some(&row_index) = labels.get(label) {
+                    *op.as_mut() = Operand::Immediate(row_index);
+                } else {
+                    return Err(ParseError::UndefinedLabel {
+                        label: label.clone(),
+                        span: op.span,
+                    });
+                }
+            }
+        }
+    }
+    Ok(())
 }

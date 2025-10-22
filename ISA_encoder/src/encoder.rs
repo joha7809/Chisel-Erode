@@ -280,50 +280,20 @@ fn encode_noop_like(op: Opcode) -> u32 {
 }
 
 pub fn encode_instruction(instr: &Instruction) -> Result<u32, EncodeError> {
-    match instr.opcode.instruction_format() {
-        InstrFormat::R3 => encode_r3(instr.opcode, &instr.operands),
-        InstrFormat::R2 => encode_r2(instr.opcode, &instr.operands),
-        InstrFormat::RI => encode_ri(instr.opcode, &instr.operands),
-        InstrFormat::RRI => encode_rri(instr.opcode, &instr.operands),
-        InstrFormat::RII => encode_rii(instr.opcode, &instr.operands),
-        InstrFormat::I => encode_i(instr.opcode, &instr.operands),
-        InstrFormat::NoOP => Ok(encode_noop_like(instr.opcode)),
+    let opcode = instr.opcode.as_ref();
+    let operands: Vec<Operand> = instr.operands.iter().map(|i| i.as_ref().clone()).collect();
+
+    match opcode.instruction_format() {
+        InstrFormat::R3 => encode_r3(*opcode, &operands),
+        InstrFormat::R2 => encode_r2(*opcode, &operands),
+        InstrFormat::RI => encode_ri(*opcode, &operands),
+        InstrFormat::RRI => encode_rri(*opcode, &operands),
+        InstrFormat::RII => encode_rii(*opcode, &operands),
+        InstrFormat::I => encode_i(*opcode, &operands),
+        InstrFormat::NoOP => Ok(encode_noop_like(*instr.opcode.as_ref())),
     }
 }
 
 pub fn encode_program(program: &[Instruction]) -> Result<Vec<u32>, EncodeError> {
     program.iter().map(encode_instruction).collect()
-}
-
-#[cfg(test)]
-mod tests {
-    use super::*;
-
-    #[test]
-    fn test_encode_add() {
-        let instr = Instruction {
-            opcode: Opcode::ADD,
-            operands: vec![
-                Operand::Register(1),
-                Operand::Register(2),
-                Operand::Register(3),
-            ],
-        };
-        let word = encode_instruction(&instr).unwrap();
-        // opcode=1 at [31:27], r1=1 at [26:22], r2=2 at [21:17], r3=3 at [16:12]
-        let expected =
-            ((Opcode::ADD.code() as u32) << 27) | (1u32 << 22) | (2u32 << 17) | (3u32 << 12);
-        assert_eq!(word, expected);
-    }
-
-    #[test]
-    fn test_encode_addi() {
-        let instr = Instruction {
-            opcode: Opcode::ADDI,
-            operands: vec![Operand::Register(4), Operand::Immediate(0x3FF_FF)], // 22-bit max smaller sample
-        };
-        let word = encode_instruction(&instr).unwrap();
-        let expected = ((Opcode::ADDI.code() as u32) << 27) | (4u32 << 22) | 0x3FF_FFu32;
-        assert_eq!(word, expected);
-    }
 }

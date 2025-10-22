@@ -5,67 +5,200 @@ mod lexer;
 mod parser;
 mod resolver;
 
+use clap::{Parser as ClapParser, Subcommand};
+use std::fs;
+use std::io::Write;
+use std::path::PathBuf;
+
+#[derive(ClapParser)]
+#[command(name = "isa-encoder")]
+#[command(about = "An assembler for the custom ISA", long_about = None)]
+struct Cli {
+    #[command(subcommand)]
+    command: Commands,
+}
+
+#[derive(Subcommand)]
+enum Commands {
+    /// Assemble a source file into binary machine code
+    Assemble {
+        /// Input assembly file
+        #[arg(short, long)]
+        input: PathBuf,
+
+        /// Output file for the binary (default: input with .bin extension)
+        #[arg(short, long)]
+        output: Option<PathBuf>,
+
+        /// Output format: binary, hex, or both
+        #[arg(short, long, default_value = "hex")]
+        format: OutputFormat,
+    },
+    /// Check assembly file for errors without generating output
+    Check {
+        /// Input assembly file
+        input: PathBuf,
+    },
+}
+
+#[derive(Clone, Copy)]
+enum OutputFormat {
+    Binary,
+    Hex,
+    Both,
+}
+
+impl std::str::FromStr for OutputFormat {
+    type Err = String;
+
+    fn from_str(s: &str) -> Result<Self, Self::Err> {
+        match s.to_lowercase().as_str() {
+            "binary" | "bin" => Ok(OutputFormat::Binary),
+            "hex" => Ok(OutputFormat::Hex),
+            "both" => Ok(OutputFormat::Both),
+            _ => Err(format!("Invalid format: {}", s)),
+        }
+    }
+}
+
 fn main() {
-    use lexer::Lexer;
+    let cli = Cli::parse();
 
-    let input = "
-LI     R3, 0;            #R0 = x, R1 = y, R2 = 20, R3 = 0, R4 = 400, R5 = 255, R6 = tempY, R7= R7, R8 = R8
-LI     R2, 20;
-LI     R5, 255;
-LI     R4, 400;
-LI     R0, 0;                   #X = 0  
-LI     R1, 0;                      #Y = 0         Start X Loop
-MULT     R6, R1, R2;        #Start Y Loop
-ADD     R8, R0, R6;          #R8 = current pixel
-JETV     R0, 0, 34;          # Is it on a boarder
-JETV     R0, 19, 34;
-JETV     R1, 0, 34;
-JETV     R1, 19, 34;
-LD     R7, R8;         # Is it black
-JETV     R7, 0, 34;
-SUBI     R8, R8, 1;         #x-1 # Is it's Neighbors Black
-LD     R7, R8;          #current pixel status
-ADDI     R8, R8, 1;         #x neutral
-JETV     R7, 0, 34;
-ADDI     R8, R8, 1;         #x+1
-LD     R7, R8; 
-SUBI     R8, R8, 1;         #x neutral
-JETV     R7, 0, 34;
-SUBI     R8, R8, 20;         #y-1
-LD     R7, R8; 
-ADDI     R8, R8, 20;         #y neutral
-JETV     R7, 0, 34;
-ADDI     R8, R8, 20;         #y+1
-LD     R7, R8; 
-SUBI     R8, R8, 20;         # neutral
-JETV     R7, 0, 34;
-ADD     R8, R8, R4;        #Set current pixel to 255 “SCPT255”
-SD     R5, R8;
-JR     36;
-ADD     R8, R8, R4;        #Set current pixel to 0      “SCPT0”
-SD     R3, R8; 
-ADDI    R1, R1, 1;        #Loops
-JLT     R1, 19, 7;                #Loop y
-ADDI     R0, R0, 1;  
-JLT     R0, 19, 6;                 #Loop x         
-END;
-";
-    // let lexer = Lexer::new("ADD     R8, R0, R6          #R8 = current pixel");
-    let lexer = Lexer::new(input);
-    let res = lexer.lex();
+    match cli.command {
+        Commands::Assemble {
+            input,
+            output,
+            format,
+        } => {
+            if let Err(e) = assemble_file(&input, output.as_ref(), format) {
+                eprintln!("{}", e);
+                std::process::exit(1);
+            }
+        }
+        Commands::Check { input } => {
+            if let Err(e) = check_file(&input) {
+                eprintln!("{}", e);
+                std::process::exit(1);
+            }
+            println!("✓ Assembly file is valid!");
+        }
+    }
+}
 
-    for token in res.iter().by_ref() {
-        println!("{}", token);
+fn assemble_file(
+    input: &PathBuf,
+    output: Option<&PathBuf>,
+    format: OutputFormat,
+) -> Result<(), String> {
+    let source = fs::read_to_string(input)
+        .map_err(|e| format!("Failed to read input file: {}", e))?;
+
+    let instructions = parse_source(&source)?;
+
+    let encoded = encoder::encode_program(&instructions)
+        .map_err(|e| format!("Encoding error: {}", e))?;
+
+    let output_path = output.cloned().unwrap_or_else(|| {
+        let mut path = input.clone();
+        path.set_extension("bin");
+        path
+    });
+
+    match format {
+        OutputFormat::Binary => {
+            write_binary(&output_path, &encoded)?;
+            println!("✓ Binary output written to {}", output_path.display());
+        }
+        OutputFormat::Hex => {
+            write_hex(&output_path, &encoded)?;
+            println!("✓ Hex output written to {}", output_path.display());
+        }
+        OutputFormat::Both => {
+            let mut bin_path = output_path.clone();
+            bin_path.set_extension("bin");
+            write_binary(&bin_path, &encoded)?;
+            println!("✓ Binary output written to {}", bin_path.display());
+
+            let mut hex_path = output_path;
+            hex_path.set_extension("hex");
+            write_hex(&hex_path, &encoded)?;
+            println!("✓ Hex output written to {}", hex_path.display());
+        }
     }
 
-    let mut parser = parser::Parser::new(res);
-    let instructions = parser.parse_instructions().unwrap();
-    for instr in instructions.iter() {
-        println!("parsed: {:?}", instr);
+    Ok(())
+}
+
+fn check_file(input: &PathBuf) -> Result<(), String> {
+    let source = fs::read_to_string(input)
+        .map_err(|e| format!("Failed to read input file: {}", e))?;
+
+    let _instructions = parse_source(&source)?;
+
+    Ok(())
+}
+
+fn parse_source(source: &str) -> Result<Vec<isa::Instruction>, String> {
+    let lexer = lexer::Lexer::new(source);
+    let tokens = lexer.lex();
+
+    let mut parser = parser::Parser::new(tokens);
+    parser.parse_instructions()
+        .map_err(|e| e.display_with_source(source))
+}
+
+fn write_binary(path: &PathBuf, encoded: &[u32]) -> Result<(), String> {
+    let mut file = fs::File::create(path)
+        .map_err(|e| format!("Failed to create output file: {}", e))?;
+
+    for word in encoded {
+        file.write_all(&word.to_be_bytes())
+            .map_err(|e| format!("Failed to write binary data: {}", e))?;
     }
-    // Test the encoder
-    let encoded = encoder::encode_program(&instructions).unwrap();
-    for code in encoded.iter() {
-        println!("{:032b}", code);
+
+    Ok(())
+}
+
+fn write_hex(path: &PathBuf, encoded: &[u32]) -> Result<(), String> {
+    let mut output = String::new();
+    
+    for word in encoded.iter() {
+        output.push_str(&format!("{:08x}\n", word));
+    }
+
+    fs::write(path, output)
+        .map_err(|e| format!("Failed to write hex file: {}", e))?;
+
+    Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_simple_program() {
+        let input = "
+            ADD R1, R2, R3
+            LI R4, 100
+            END
+        ";
+
+        let result = parse_source(input);
+        assert!(result.is_ok());
+        let instructions = result.unwrap();
+        assert_eq!(instructions.len(), 3);
+    }
+
+    #[test]
+    fn test_error_reporting() {
+        let input = "
+            ADD R1, R2
+        ";
+
+        let result = parse_source(input);
+        assert!(result.is_err());
+        let error = result.unwrap_err();
+        assert!(error.contains("Operand count mismatch"));
     }
 }

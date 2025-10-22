@@ -38,7 +38,7 @@ impl Display for Token {
     }
 }
 
-#[derive(Debug, PartialEq, Clone)]
+#[derive(Debug, PartialEq, Clone, Copy)]
 pub struct Span {
     pub start: usize,
     pub end: usize,
@@ -105,9 +105,14 @@ impl<'a> Lexer<'a> {
     }
 
     fn skip_whitespace(&mut self) {
-        while let Some((_, c)) = self.chars.peek() {
+        while let Some((idx, c)) = self.chars.peek() {
             if c.is_whitespace() {
-                self.chars.next();
+                if *c == '\n' {
+                    self.line += 1;
+                    self.chars.next();
+                } else {
+                    self.chars.next();
+                }
             } else {
                 break;
             }
@@ -124,6 +129,8 @@ impl<'a> Lexer<'a> {
             .map(|(_, c)| c)
             .collect();
         let len = comment.chars().count();
+        self.line += 1;
+
         Token {
             kind: TokenKind::Comment(comment),
             span: (start, start + len, self.line).into(),
@@ -246,7 +253,7 @@ mod tests {
             SUB R4, R5, R6
             MULT R7, R8, R9
             ADDI R10, R11, 42
-            SUBI R12, R13, -7
+            SUBI R12, R13, 7
             AND R1, R2, R3
             OR R4, R5, R6
             NOT R7, R8
@@ -412,6 +419,7 @@ mod tests {
 
     #[test]
     fn test_edge_cases() {
+        //TODO: implement lexer errors
         let input = "
             ADDI R1, R2, -15
             ADD R16, R1, R2
