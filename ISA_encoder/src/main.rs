@@ -45,7 +45,7 @@ enum Commands {
 enum OutputFormat {
     Binary,
     Hex,
-    Both,
+    Txt,
 }
 
 impl std::str::FromStr for OutputFormat {
@@ -55,7 +55,7 @@ impl std::str::FromStr for OutputFormat {
         match s.to_lowercase().as_str() {
             "binary" | "bin" => Ok(OutputFormat::Binary),
             "hex" => Ok(OutputFormat::Hex),
-            "both" => Ok(OutputFormat::Both),
+            "txt" => Ok(OutputFormat::Txt),
             _ => Err(format!("Invalid format: {}", s)),
         }
     }
@@ -90,13 +90,13 @@ fn assemble_file(
     output: Option<&PathBuf>,
     format: OutputFormat,
 ) -> Result<(), String> {
-    let source = fs::read_to_string(input)
-        .map_err(|e| format!("Failed to read input file: {}", e))?;
+    let source =
+        fs::read_to_string(input).map_err(|e| format!("Failed to read input file: {}", e))?;
 
     let instructions = parse_source(&source)?;
 
-    let encoded = encoder::encode_program(&instructions)
-        .map_err(|e| format!("Encoding error: {}", e))?;
+    let encoded =
+        encoder::encode_program(&instructions).map_err(|e| format!("Encoding error: {}", e))?;
 
     let output_path = output.cloned().unwrap_or_else(|| {
         let mut path = input.clone();
@@ -113,16 +113,11 @@ fn assemble_file(
             write_hex(&output_path, &encoded)?;
             println!("✓ Hex output written to {}", output_path.display());
         }
-        OutputFormat::Both => {
+        OutputFormat::Txt => {
             let mut bin_path = output_path.clone();
-            bin_path.set_extension("bin");
-            write_binary(&bin_path, &encoded)?;
-            println!("✓ Binary output written to {}", bin_path.display());
-
-            let mut hex_path = output_path;
-            hex_path.set_extension("hex");
-            write_hex(&hex_path, &encoded)?;
-            println!("✓ Hex output written to {}", hex_path.display());
+            bin_path.set_extension("txt");
+            write_txt_binary(&bin_path, &encoded)?;
+            println!("✓ Binary txt output written to {}", bin_path.display());
         }
     }
 
@@ -130,8 +125,8 @@ fn assemble_file(
 }
 
 fn check_file(input: &PathBuf) -> Result<(), String> {
-    let source = fs::read_to_string(input)
-        .map_err(|e| format!("Failed to read input file: {}", e))?;
+    let source =
+        fs::read_to_string(input).map_err(|e| format!("Failed to read input file: {}", e))?;
 
     let _instructions = parse_source(&source)?;
 
@@ -143,13 +138,14 @@ fn parse_source(source: &str) -> Result<Vec<isa::Instruction>, String> {
     let tokens = lexer.lex();
 
     let mut parser = parser::Parser::new(tokens);
-    parser.parse_instructions()
+    parser
+        .parse_instructions()
         .map_err(|e| e.display_with_source(source))
 }
 
 fn write_binary(path: &PathBuf, encoded: &[u32]) -> Result<(), String> {
-    let mut file = fs::File::create(path)
-        .map_err(|e| format!("Failed to create output file: {}", e))?;
+    let mut file =
+        fs::File::create(path).map_err(|e| format!("Failed to create output file: {}", e))?;
 
     for word in encoded {
         file.write_all(&word.to_be_bytes())
@@ -159,15 +155,27 @@ fn write_binary(path: &PathBuf, encoded: &[u32]) -> Result<(), String> {
     Ok(())
 }
 
+fn write_txt_binary(path: &PathBuf, encoded: &[u32]) -> Result<(), String> {
+    let mut output = String::new();
+
+    for word in encoded.iter() {
+        // debug print resultant lines in 32 bit format
+        output.push_str(&format!("{:032b}\n", word));
+    }
+
+    fs::write(path, output).map_err(|e| format!("Failed to write text binary file: {}", e))?;
+
+    Ok(())
+}
+
 fn write_hex(path: &PathBuf, encoded: &[u32]) -> Result<(), String> {
     let mut output = String::new();
-    
+
     for word in encoded.iter() {
         output.push_str(&format!("{:08x}\n", word));
     }
 
-    fs::write(path, output)
-        .map_err(|e| format!("Failed to write hex file: {}", e))?;
+    fs::write(path, output).map_err(|e| format!("Failed to write hex file: {}", e))?;
 
     Ok(())
 }
