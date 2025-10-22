@@ -35,7 +35,6 @@ pub enum Opcode {
 pub enum Operand {
     Register(u8),     // 0..31
     Immediate(usize), // -2^31..2^31-1
-    Address(u16),     // 0..65535
 }
 
 #[derive(Debug, Clone)]
@@ -45,20 +44,8 @@ pub struct Instruction {
     pub operands: Vec<Operand>,
 }
 
-#[derive(Debug, Clone)]
-pub enum UnresolvedOperand {
-    Register(usize),
-    Immediate(usize),
-    LabelRef(String), // Temporary reference to a label
-}
-
-#[derive(Debug, Clone)]
-pub struct UnresolvedInstruction {
-    pub opcode: Opcode,
-    pub operands: Vec<UnresolvedOperand>,
-}
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[allow(clippy::upper_case_acronyms)]
 pub enum InstrFormat {
     R2,
     R3,  // opcode + reg + reg + reg

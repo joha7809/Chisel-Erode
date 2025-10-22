@@ -1,6 +1,6 @@
-use std::{fmt::Display, io::Write};
+use std::fmt::Display;
 
-use crate::isa::{self, Opcode, Operand, REGISTER_LIMIT};
+use crate::isa::{self, Opcode, REGISTER_LIMIT};
 
 /// Represents one lexical unit (token) in the assembly code.
 #[derive(Debug, Clone, PartialEq)]

@@ -61,7 +61,7 @@ impl Parser {
                 TokenKind::Opcode(opcode) => {
                     let opcode = *opcode;
                     self.next(); // consume the opcode token
-                    let operands = self.parse_operands_for(opcode, &label_map)?;
+                    let operands = self.parse_operands(&label_map)?;
                     // DEBUG PRINT WHAT IS GOING on
                     println!("Parsed Opcode: {:?}, Operands: {:?}", opcode, operands);
                     opcode.operand_validator()(&operands)?; // validate immediately
@@ -77,25 +77,12 @@ impl Parser {
     }
 
     /// Parse operands for a specific opcode. Resolves labels to immediate indices.
-    fn parse_operands_for(
+    fn parse_operands(
         &mut self,
-        opcode: Opcode,
         label_map: &HashMap<String, usize>,
     ) -> Result<Vec<Operand>, ParseError> {
-        //TODO: CLEANUP THIS CHAT CODE
-
-        let expected = expected_operand_count(opcode);
-        if expected == 0 {
-            return Ok(Vec::new());
-        }
-
-        let mut operands: Vec<Operand> = Vec::with_capacity(expected);
-        while operands.len() < expected {
-            let token = match self.peek() {
-                Some(t) => t.clone(),
-                None => break,
-            };
-
+        let mut operands: Vec<Operand> = Vec::with_capacity(3);
+        while let Some(token) = self.peek() {
             match &token.kind {
                 TokenKind::Register(reg_num) => {
                     operands.push(Operand::Register(*reg_num as u8));
