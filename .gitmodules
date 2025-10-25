@@ -1,0 +1,3 @@
+[submodule "isa-utils"]
+	path = isa-utils
+	url = https://github.com/joha7809/ISA-utils.git
