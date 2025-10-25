@@ -5,6 +5,7 @@ mod lexer;
 mod parser;
 mod resolver;
 
+use clap::*;
 use clap::{Parser as ClapParser, Subcommand};
 use std::fs;
 use std::io::Write;
@@ -30,8 +31,8 @@ enum Commands {
         #[arg(short, long)]
         output: Option<PathBuf>,
 
-        /// Output format: binary, hex, or both
-        #[arg(short, long, default_value = "hex")]
+        /// Output format: binary, hex, or txt (default).
+        #[arg(short, long, default_value = "txt")]
         format: OutputFormat,
     },
     /// Check assembly file for errors without generating output

@@ -24,7 +24,7 @@ pub enum Opcode {
     // Control
     JR,
     JEQ,
-    JLT,
+    JLTV,
     JGT,
     JETV,
     NOP,
@@ -106,7 +106,7 @@ impl Opcode {
             "JR" => Some(Opcode::JR),
             "JGT" => Some(Opcode::JGT),
             "JEQ" => Some(Opcode::JEQ),
-            "JLT" => Some(Opcode::JLT),
+            "JLTV" => Some(Opcode::JLTV),
             "JETV" => Some(Opcode::JETV),
             "NOP" => Some(Opcode::NOP),
             "END" => Some(Opcode::END),
@@ -130,7 +130,7 @@ impl Opcode {
             Opcode::JR => "JR",
             Opcode::JGT => "JGT",
             Opcode::JEQ => "JEQ",
-            Opcode::JLT => "JLT",
+            Opcode::JLTV => "JLTV",
             Opcode::JETV => "JETV",
             Opcode::NOP => "NOP",
             Opcode::END => "END",
@@ -157,7 +157,7 @@ impl Opcode {
             // CONTROL
             Opcode::JR => 0b01011,
             Opcode::JEQ => 0b01100,
-            Opcode::JLT => 0b01101,
+            Opcode::JLTV => 0b01101,
             Opcode::JGT => 0b01110,
             Opcode::JETV => 0b01111,
             Opcode::NOP => 0b00000,
@@ -180,7 +180,7 @@ impl Opcode {
 
             // Control flow
             Opcode::JR => InstrFormat::I, // opcode + imm (jump target)
-            Opcode::JLT => InstrFormat::RII,
+            Opcode::JLTV => InstrFormat::RII,
             Opcode::JEQ | Opcode::JGT => InstrFormat::RRI, // opcode + reg + reg + imm (jump target)
             Opcode::JETV => InstrFormat::RII,              // opcode + reg + imm + imm
             Opcode::NOP | Opcode::END => InstrFormat::NoOP, // opcode + imm (NOP = 0, END = 27-bit placeholder)

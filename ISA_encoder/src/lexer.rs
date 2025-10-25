@@ -342,7 +342,7 @@ mod tests {
         let input = "
             JR 10
             JEQ 12, R1, R2
-            JLT 15, R3, R4
+            JLTV 15, R3, R4
             JGT 20, R5, R6
             JETV 25, R7, 50
             NOP
@@ -358,7 +358,7 @@ mod tests {
             TokenKind::Register(1),
             TokenKind::Comma,
             TokenKind::Register(2),
-            TokenKind::Opcode(Opcode::JLT),
+            TokenKind::Opcode(Opcode::JLTV),
             TokenKind::Immediate(15),
             TokenKind::Comma,
             TokenKind::Register(3),
@@ -421,7 +421,7 @@ mod tests {
     fn test_edge_cases() {
         //TODO: implement lexer errors
         let input = "
-            ADDI R1, R2, -15
+            ADDI R1, R2, 15
             ADD R16, R1, R2
             loop_1: NOP
         ";
