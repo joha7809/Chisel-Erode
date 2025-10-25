@@ -1,10 +1,10 @@
 use std::collections::HashMap;
 
-use isa_core::{ResolvedInstruction, ToResolvedInstr};
+use isa_core::{consts::REGISTER_LIMIT, traits::ToResolvedInstr, types::ResolvedInstruction};
 
 use crate::{
     errors::ParseError,
-    isa::{InstrFormatValidator, Operand, REGISTER_LIMIT, Spanned, UnresolvedInstruction},
+    isa::{InstrFormatValidator, Spanned, UnresolvedInstruction, UnresolvedOperand},
     lexer::{Token, TokenKind},
 };
 
@@ -32,6 +32,10 @@ impl Parser {
         let mut instructions = Vec::with_capacity(20);
         let mut labels = HashMap::with_capacity(2);
 
+        // if self.peek().is_none() {
+        //     return Err(ParseError::UnexpectedEndOfInput);
+        // }
+
         while let Some(token) = self.next() {
             match token.kind {
                 TokenKind::LabelDef(name) => {
@@ -50,7 +54,14 @@ impl Parser {
                     });
                 }
                 TokenKind::Comment(_) | TokenKind::Terminator => continue,
-                _ => {} // handle unexpected tokens
+                _ => {
+                    // I think this is unreachable, but just in case
+                    return Err(ParseError::UnexpectedToken {
+                        expected: "label definition or opcode".to_string(),
+                        found: format!("{:?}", token.kind),
+                        span: token.span,
+                    });
+                }
             }
         }
 
@@ -64,7 +75,7 @@ impl Parser {
     }
 
     /// Parse operands for a specific opcode.
-    fn parse_operands(&mut self) -> Result<Vec<Spanned<Operand>>, ParseError> {
+    fn parse_operands(&mut self) -> Result<Vec<Spanned<UnresolvedOperand>>, ParseError> {
         let mut operands = Vec::new();
 
         while let Some(token) = self.peek() {
@@ -74,17 +85,23 @@ impl Parser {
                         return Err(ParseError::InvalidRegister { span: token.span });
                     }
 
-                    operands.push(Spanned::new(Operand::Register(*r as u8), token.span));
+                    operands.push(Spanned::new(
+                        UnresolvedOperand::Register(*r as u8),
+                        token.span,
+                    ));
 
                     self.next();
                 }
                 TokenKind::Immediate(i) => {
-                    operands.push(Spanned::new(Operand::Immediate(*i), token.span));
+                    operands.push(Spanned::new(UnresolvedOperand::Immediate(*i), token.span));
                     self.next();
                 }
                 TokenKind::LabelRef(label) => {
                     // Store as placeholder, resolve later
-                    operands.push(Spanned::new(Operand::LabelRef(label.clone()), token.span));
+                    operands.push(Spanned::new(
+                        UnresolvedOperand::LabelRef(label.clone()),
+                        token.span,
+                    ));
                     self.next();
                 }
                 TokenKind::Comma => {
@@ -126,9 +143,9 @@ fn resolve_labels(
     // For each opcode that is a label reference, replace with immediate row_index
     for instr in instructions.iter_mut() {
         for op in instr.operands.iter_mut() {
-            if let Operand::LabelRef(label) = op.as_ref() {
+            if let UnresolvedOperand::LabelRef(label) = op.as_ref() {
                 if let Some(&row_index) = labels.get(label) {
-                    *op.as_mut() = Operand::Immediate(row_index);
+                    *op.as_mut() = UnresolvedOperand::Immediate(row_index);
                 } else {
                     return Err(ParseError::UndefinedLabel {
                         label: label.clone(),

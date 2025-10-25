@@ -3,9 +3,9 @@ mod errors;
 mod isa;
 mod lexer;
 mod parser;
-
 use clap::*;
 use clap::{Parser as ClapParser, Subcommand};
+use isa_core::types::ResolvedInstruction;
 use std::fs;
 use std::io::Write;
 use std::path::PathBuf;
@@ -133,7 +133,7 @@ fn check_file(input: &PathBuf) -> Result<(), String> {
     Ok(())
 }
 
-fn parse_source(source: &str) -> Result<Vec<isa_core::ResolvedInstruction>, String> {
+fn parse_source(source: &str) -> Result<Vec<ResolvedInstruction>, String> {
     let lexer = lexer::Lexer::new(source);
     let tokens = lexer.lex();
 

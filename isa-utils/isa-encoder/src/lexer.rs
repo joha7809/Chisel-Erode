@@ -1,6 +1,7 @@
+use isa_core::consts::REGISTER_LIMIT;
 use std::{fmt::Display, str::FromStr};
 
-use crate::isa::{self, Opcode, REGISTER_LIMIT};
+use crate::isa::{self, Opcode};
 
 /// Represents one lexical unit (token) in the assembly code.
 #[derive(Debug, Clone, PartialEq)]
@@ -57,7 +58,6 @@ impl From<(usize, usize, usize)> for Span {
 
 pub struct Lexer<'a> {
     // Returns a vector of tokens (Opcode and Operands) from the input stringin
-    input: &'a str,
     chars: std::iter::Peekable<std::str::CharIndices<'a>>,
     line: usize,
     position: usize,
@@ -66,7 +66,6 @@ pub struct Lexer<'a> {
 impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
         Lexer {
-            input,
             chars: input.char_indices().peekable(),
             line: 0,
             position: 0,
@@ -155,7 +154,7 @@ impl<'a> Lexer<'a> {
         }
 
         let num = digits.parse::<usize>().unwrap();
-        if num == 0 || num > REGISTER_LIMIT {
+        if num > REGISTER_LIMIT {
             // TODO: return error token or panic
         }
 

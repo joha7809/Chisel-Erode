@@ -1,12 +1,13 @@
 use crate::{errors::ParseError, lexer::Span};
 
-use isa_core::ToResolvedInstr;
+use isa_core::traits::ToResolvedInstr;
 // Re-export core ISA types from isa-core
-pub use isa_core::{InstrFormat, Opcode, REGISTER_LIMIT};
+pub use isa_core::{types::InstrFormat, types::Opcode};
 
-// Assembler-specific operand type that includes label references
+/// Assembler-specific operand type that includes label references
+/// Will be resolved to Operand from ISA-core
 #[derive(Debug, Clone)]
-pub enum Operand {
+pub enum UnresolvedOperand {
     Register(u8),     // 0..31
     Immediate(usize), // -2^31..2^31-1
     LabelRef(String), // Label reference (resolved during assembly)
@@ -35,7 +36,7 @@ impl<T> Spanned<T> {
 #[derive(Debug, Clone)]
 pub struct UnresolvedInstruction {
     pub opcode: Spanned<Opcode>,
-    pub operands: Vec<Spanned<Operand>>,
+    pub operands: Vec<Spanned<UnresolvedOperand>>,
 }
 
 impl UnresolvedInstruction {
@@ -54,20 +55,24 @@ impl UnresolvedInstruction {
 }
 
 impl ToResolvedInstr for UnresolvedInstruction {
-    fn to_resolved(&self) -> Option<isa_core::ResolvedInstruction> {
-        let mut resolved_ops = Vec::new();
+    fn to_resolved(&self) -> Option<isa_core::types::ResolvedInstruction> {
+        let mut resolved_ops = Vec::with_capacity(3);
         for op in &self.operands {
             match op.as_ref() {
-                Operand::Register(r) => resolved_ops.push(isa_core::Operand::Register(*r)),
-                Operand::Immediate(i) => resolved_ops.push(isa_core::Operand::Immediate(*i)),
-                Operand::LabelRef(_) => {
+                UnresolvedOperand::Register(r) => {
+                    resolved_ops.push(isa_core::types::Operand::Register(*r))
+                }
+                UnresolvedOperand::Immediate(i) => {
+                    resolved_ops.push(isa_core::types::Operand::Immediate(*i))
+                }
+                UnresolvedOperand::LabelRef(_) => {
                     // Cannot resolve label references here
                     // Should never happen if used correctly
                     return None;
                 }
             }
         }
-        Some(isa_core::ResolvedInstruction {
+        Some(isa_core::types::ResolvedInstruction {
             opcode: *self.opcode.as_ref(),
             operands: resolved_ops,
         })
@@ -80,7 +85,7 @@ enum OperandType {
 }
 
 fn validate_pattern(
-    ops: &[Spanned<Operand>],
+    ops: &[Spanned<UnresolvedOperand>],
     instr_span: &Span,
     expected_count: usize,
     pattern: &[OperandType],
@@ -95,8 +100,8 @@ fn validate_pattern(
 
     for (op, expected) in ops.iter().zip(pattern) {
         match (op.as_ref(), expected) {
-            (Operand::Register(_), OperandType::Reg)
-            | (Operand::Immediate(_), OperandType::Imm) => continue,
+            (UnresolvedOperand::Register(_), OperandType::Reg)
+            | (UnresolvedOperand::Immediate(_), OperandType::Imm) => continue,
             _ => return Err(ParseError::OperandTypeMismatch { span: op.span }),
         }
     }
@@ -105,11 +110,11 @@ fn validate_pattern(
 
 // Trait to add validation to InstrFormat in the assembler
 pub trait InstrFormatValidator {
-    fn validate(&self, ops: &[Spanned<Operand>], span: &Span) -> Result<(), ParseError>;
+    fn validate(&self, ops: &[Spanned<UnresolvedOperand>], span: &Span) -> Result<(), ParseError>;
 }
 
 impl InstrFormatValidator for InstrFormat {
-    fn validate(&self, ops: &[Spanned<Operand>], span: &Span) -> Result<(), ParseError> {
+    fn validate(&self, ops: &[Spanned<UnresolvedOperand>], span: &Span) -> Result<(), ParseError> {
         use InstrFormat::*;
         match self {
             R3 => validate_pattern(
