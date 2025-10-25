@@ -1,4 +1,8 @@
-use crate::isa::{InstrFormat, Instruction, Opcode, Operand, REGISTER_LIMIT};
+use crate::isa::{InstrFormat, Opcode, REGISTER_LIMIT};
+use isa_core::{
+    Operand, ResolvedInstruction,
+    bits::{fits_in_bits, set_bits},
+};
 
 #[derive(Debug)]
 pub enum EncodeError {
@@ -49,26 +53,6 @@ impl std::error::Error for EncodeError {}
 // Bit field helpers (bit 31 is MSB)
 const OPCODE_HI: u8 = 31;
 const OPCODE_LO: u8 = 27; // 5 bits
-
-fn set_bits(word: &mut u32, hi: u8, lo: u8, value: u32) {
-    debug_assert!(hi >= lo);
-    let width = (hi - lo + 1) as u32;
-    let mask: u32 = if width == 32 {
-        u32::MAX
-    } else {
-        (1u32 << width) - 1
-    };
-    let shift = lo as u32;
-    *word |= (value & mask) << shift;
-}
-
-fn fits_in_bits(value: usize, bits: u8) -> bool {
-    if bits >= 31 {
-        // 31 or 32 bits (unsigned check)
-        return true;
-    }
-    value <= ((1usize << bits) - 1)
-}
 
 fn encode_r3(op: Opcode, regs: &[Operand]) -> Result<u32, EncodeError> {
     if regs.len() != 3 {
@@ -279,21 +263,22 @@ fn encode_noop_like(op: Opcode) -> u32 {
     word
 }
 
-pub fn encode_instruction(instr: &Instruction) -> Result<u32, EncodeError> {
-    let opcode = instr.opcode.as_ref();
-    let operands: Vec<Operand> = instr.operands.iter().map(|i| i.as_ref().clone()).collect();
+pub fn encode_instruction(instr: &ResolvedInstruction) -> Result<u32, EncodeError> {
+    let opcode = instr.opcode;
+    // let operands: Vec<isa_core::Operand> = instr.operands.iter().map(|i| i.clone()).collect();
+    let operands = &instr.operands;
 
     match opcode.instruction_format() {
-        InstrFormat::R3 => encode_r3(*opcode, &operands),
-        InstrFormat::R2 => encode_r2(*opcode, &operands),
-        InstrFormat::RI => encode_ri(*opcode, &operands),
-        InstrFormat::RRI => encode_rri(*opcode, &operands),
-        InstrFormat::RII => encode_rii(*opcode, &operands),
-        InstrFormat::I => encode_i(*opcode, &operands),
-        InstrFormat::NoOP => Ok(encode_noop_like(*instr.opcode.as_ref())),
+        InstrFormat::R3 => encode_r3(opcode, operands),
+        InstrFormat::R2 => encode_r2(opcode, operands),
+        InstrFormat::RI => encode_ri(opcode, operands),
+        InstrFormat::RRI => encode_rri(opcode, operands),
+        InstrFormat::RII => encode_rii(opcode, operands),
+        InstrFormat::I => encode_i(opcode, operands),
+        InstrFormat::NoOP => Ok(encode_noop_like(instr.opcode)),
     }
 }
 
-pub fn encode_program(program: &[Instruction]) -> Result<Vec<u32>, EncodeError> {
+pub fn encode_program(program: &[ResolvedInstruction]) -> Result<Vec<u32>, EncodeError> {
     program.iter().map(encode_instruction).collect()
 }

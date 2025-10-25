@@ -6,6 +6,9 @@ LI R1, 10
 LI R2, 20
 LI R3, 0
 
+# Jump to later defined labels
+JR loop_start
+
 # Arithmetic operations
 ADD R3, R1, R2          # R3 = R1 + R2 = 30
 SUB R4, R3, R1          # R4 = R3 - R1 = 20
@@ -27,7 +30,7 @@ LD R12, R11             # Load from address in R11 to R12
 # Control flow with labels
 loop_start:
     ADDI R1, R1, 1
-    JLT R1, 100, 16     # Jump to instruction 16 if R1 < 100
+    JLTV R1, 100, 16     # Jump to instruction 16 if R1 < 100
     
 # Conditional jumps  
 JEQ R1, R2, 10          # Jump to instruction 10 if R1 == R2
@@ -40,3 +43,6 @@ JR 25
 end_label:
     NOP
     END
+
+
+

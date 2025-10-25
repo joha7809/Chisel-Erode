@@ -27,7 +27,7 @@
 | -------------------- | ----------------- | ----------------------------- |
 | Jump                 | `JR 7`            | `goto inst. 7`                |
 | Jump if equal        | `JEQ R2, R3, 8`   | `if (R2 == R3) goto inst. 8`  |
-| Jump if less than    | `JLT R2, 19, 9`   | `if (R2 < 19) goto inst. 9`   |
+| Jump if less than    | `JLTV R2, 19, 9`  | `if (R2 < 19) goto inst. 9`   |
 | Jump if greater than | `JGT R2, R3, 10`  | `if (R2 > R3) goto inst. 10`  |
 | Jump if eq. to value | `JETV R2, 10, 15` | `if (R2 == 10) goto inst. 15` |
 | No operation         | `NOP`             | do nothing                    |

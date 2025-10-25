@@ -1,8 +1,10 @@
 use std::collections::HashMap;
 
+use isa_core::{ResolvedInstruction, ToResolvedInstr};
+
 use crate::{
     errors::ParseError,
-    isa::{Instruction, Opcode, Operand, REGISTER_LIMIT, Spanned},
+    isa::{InstrFormatValidator, Operand, REGISTER_LIMIT, Spanned, UnresolvedInstruction},
     lexer::{Token, TokenKind},
 };
 
@@ -25,7 +27,7 @@ impl Parser {
         self.tokens.next()
     }
 
-    pub fn parse_instructions(&mut self) -> Result<Vec<Instruction>, ParseError> {
+    pub fn parse_instructions(&mut self) -> Result<Vec<ResolvedInstruction>, ParseError> {
         // First pass: collect raw instructions with label positions
         let mut instructions = Vec::with_capacity(20);
         let mut labels = HashMap::with_capacity(2);
@@ -42,7 +44,7 @@ impl Parser {
                 }
                 TokenKind::Opcode(opcode) => {
                     let operands = self.parse_operands()?;
-                    instructions.push(Instruction {
+                    instructions.push(UnresolvedInstruction {
                         opcode: Spanned::new(opcode, token.span),
                         operands,
                     });
@@ -56,9 +58,9 @@ impl Parser {
         resolve_labels(&mut instructions, &labels)?;
 
         // Third pass: validate
-        validate_instructions(&instructions)?;
+        let resolved = validate_instructions(&instructions)?;
 
-        Ok(instructions)
+        Ok(resolved)
     }
 
     /// Parse operands for a specific opcode.
@@ -100,19 +102,25 @@ impl Parser {
     }
 }
 
-fn validate_instructions(instructions: &[Instruction]) -> Result<(), ParseError> {
+fn validate_instructions(
+    instructions: &[UnresolvedInstruction],
+) -> Result<Vec<ResolvedInstruction>, ParseError> {
+    let mut res = Vec::with_capacity(20);
     for instr in instructions {
         instr
             .opcode
             .as_ref()
             .instruction_format()
             .validate(&instr.operands, &instr.get_total_span())?;
+
+        let res_instr = instr.to_resolved().ok_or(ParseError::InvalidInstruction)?;
+        res.push(res_instr);
     }
-    Ok(())
+    Ok(res)
 }
 
 fn resolve_labels(
-    instructions: &mut [Instruction],
+    instructions: &mut [UnresolvedInstruction],
     labels: &HashMap<String, usize>,
 ) -> Result<(), ParseError> {
     // For each opcode that is a label reference, replace with immediate row_index

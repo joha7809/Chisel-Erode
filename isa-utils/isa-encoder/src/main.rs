@@ -3,7 +3,6 @@ mod errors;
 mod isa;
 mod lexer;
 mod parser;
-mod resolver;
 
 use clap::*;
 use clap::{Parser as ClapParser, Subcommand};
@@ -134,7 +133,7 @@ fn check_file(input: &PathBuf) -> Result<(), String> {
     Ok(())
 }
 
-fn parse_source(source: &str) -> Result<Vec<isa::Instruction>, String> {
+fn parse_source(source: &str) -> Result<Vec<isa_core::ResolvedInstruction>, String> {
     let lexer = lexer::Lexer::new(source);
     let tokens = lexer.lex();
 

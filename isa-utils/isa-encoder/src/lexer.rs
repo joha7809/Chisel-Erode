@@ -1,4 +1,4 @@
-use std::fmt::Display;
+use std::{fmt::Display, str::FromStr};
 
 use crate::isa::{self, Opcode, REGISTER_LIMIT};
 
@@ -220,7 +220,7 @@ impl<'a> Lexer<'a> {
 
         let kind = if ident.ends_with(':') {
             TokenKind::LabelDef(ident.trim_end_matches(':').to_string())
-        } else if let Some(opcode) = isa::Opcode::from_str(&ident) {
+        } else if let Ok(opcode) = isa::Opcode::from_str(&ident) {
             TokenKind::Opcode(opcode)
         } else {
             TokenKind::LabelRef(ident)

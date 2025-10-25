@@ -28,6 +28,7 @@ pub enum ParseError {
     InvalidRegister {
         span: Span,
     },
+    InvalidInstruction,
 }
 
 impl ParseError {
@@ -84,6 +85,10 @@ impl ParseError {
                     "Parse Error: Invalid register\n{}",
                     format_error_location(source, span, "register out of range")
                 )
+            }
+            ParseError::InvalidInstruction => {
+                "Something went wrong when resolving an Insruction. This should not happen!"
+                    .to_string()
             }
         }
     }
@@ -146,6 +151,13 @@ impl std::fmt::Display for ParseError {
             }
             ParseError::InvalidRegister { span } => {
                 write!(f, "Parse Error at line {}: Invalid register", span.line + 1)
+            }
+
+            ParseError::InvalidInstruction => {
+                write!(
+                    f,
+                    "Error happened at instruction resolving. This should never happen, contact the author!"
+                )
             }
         }
     }
