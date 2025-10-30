@@ -1,0 +1,42 @@
+$date
+2025-10-30T14:03+0000
+$end
+$version
+0.2
+$end
+$comment
+
+$end
+$timescale 1ns  $end
+$scope module ALU $end
+ $var wire 1 ! io_zero_flag $end
+ $var wire 4 " io_opcode $end
+ $var wire 32 # io_result $end
+ $var wire 1 $ clock $end
+ $var wire 32 % io_operand1 $end
+ $var wire 32 & io_operand2 $end
+ $var wire 1 ' reset $end
+$upscope $end
+$enddefinitions $end
+$dumpvars
+0!
+b0000 "
+0$
+b00000000000000000000000000000000 &
+0'
+b00000000000000000000000000000000 #
+b00000000000000000000000000000000 %
+$end
+#0
+1!
+1'
+#1
+1$
+#6
+1!
+b0000 "
+b00000000000000000000000000000000 #
+0$
+b00000000000000000000000000000000 %
+b00000000000000000000000000000000 &
+0'
