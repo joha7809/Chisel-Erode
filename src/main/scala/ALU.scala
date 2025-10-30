@@ -12,6 +12,17 @@ class ALU extends Module {
   })
 
   // Implement this module here
+  switch(opcode){
+    is("b0001".U) {result := operand1 + operand2} //Add
+    is("b0010".U) {result := operand1 - operand2} //Subtract
+    is("b0011".U) {result := operand1 + operand2} //Multiply
+    is("b0100".U) {result := operand1 + operand2} //Add immediate
+    is("b0101".U){result := operand1 - operand2} //Subtract immediate
 
+    is("b0110".U){result := operand1 | operand2} //Bitwise OR
+    is("b0111".U){result := ~operand1} //Bitwise NOT
+    is("b1000".U){result := operand1 & operand2} //Bitwise AND
+
+  }.otherwise{result:= 0}
 }
 
