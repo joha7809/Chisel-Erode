@@ -27,7 +27,7 @@ class ALUTester extends AnyFlatSpec with ChiselScalatestTester {
         dut.io.operand2.poke(45.S)
         dut.io.result.expect(1665.S)
         dut.io.zero_flag.expect(0.B)
-        //Load
+        //Load -- Irrelevant opcode, should return 0.S
         dut.io.opcode.poke(9.U)
         dut.io.operand1.poke(37.S)
         dut.io.operand2.poke(45.S)

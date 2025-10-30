@@ -11,7 +11,7 @@ class ALU extends Module {
     val result = Output(SInt(32.W))
     val zero_flag = Output(Bool())
   })
-
+  // Default value. When an irrelevant opcode is received, simply pass along 0.S
   io.result := 0.S
   // Implement this module here
   switch(io.opcode){
