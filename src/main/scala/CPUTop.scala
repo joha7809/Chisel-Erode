@@ -3,7 +3,7 @@ import chisel3.util._
 
 class CPUTop extends Module {
   val io = IO(new Bundle {
-    val done = Output(Bool ())
+    val done = Output(Bool())
     val run = Input(Bool ())
     //This signals are used by the tester for loading and dumping the memory content, do not touch
     val testerDataMemEnable = Input(Bool ())
@@ -28,8 +28,11 @@ class CPUTop extends Module {
   val alu = Module(new ALU())
 
   //Connecting the modules
-  //programCounter.io.run := io.run
-  //programMemory.io.address := programCounter.io.programCounter
+  programCounter.io.run := io.run
+  programCounter.io.stop := io.done
+  programMemory.io.address := programCounter.io.programCounter
+
+  controlUnit.io.opcode := programCounter.io.programCounter
 
   ////////////////////////////////////////////
   //Continue here with your connections

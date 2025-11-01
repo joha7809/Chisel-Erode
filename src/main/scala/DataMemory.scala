@@ -17,7 +17,7 @@ class DataMemory extends Module {
   })
 
 
-  val memory = Mem (65536 , UInt (32.W))
+  val memory = Mem (65536 , SInt (32.W))
 
   when(io.writeMem){
     memory(io.address) := io.dataWrite
