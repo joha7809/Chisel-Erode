@@ -48,13 +48,13 @@ class ControlUnit extends Module {
 
     //Data opcodes:
     is("b1001".U){io.regWrite := 1.B; io.loadImmediate := 1.B; io.readImmediate := 1.B}
-    is("b1010".U){io.regWrite := 1.B; io.readMem := 1.B; io.memToReg := 1.B} //Technically we don't need both readMem and MemToReg
+    is("b1010".U){io.regWrite := 1.B; io.readMem := 1.B; io.memToReg := 1.B} 
     is("b1011".U){io.readR1 := 1.B; io.writeMem := 1.B}
 
     //Jump opcodes:
     is("b1100".U){io.jumpImmediate := 1.B}
-    is("b1101".U){io.jumpEqual := 1.B}
-    is("b1110".U){io.jumpLess := 1.B}
+    is("b1101".U){io.jumpEqual := 1.B; io.readR1 := 1.B}  // JEQ needs to read R1 for comparison
+    is("b1110".U){io.jumpLess := 1.B; io.readR1 := 1.B}   // JLT needs to read R1 for comparison
 
     //Strict control opcodes:
     is("b0000".U){} //Nothing is done when NOP

@@ -25,8 +25,10 @@ class ALU extends Module {
     is("b0111".U){io.result := ~io.operand1} //Bitwise NOT
     is("b1000".U){io.result := io.operand1 & io.operand2} //Bitwise AND
 
-    is("b1101".U){io.result := io.operand1 - io.operand2} // Jump if equal
-    is("b1110".U){io.result := io.operand1 - io.operand2} // Jump if less than
+    // For JEQ and JLT, operand1=R2 and operand2=R1, but we want to compare R1-R2
+    // So we swap: compute operand2 - operand1
+    is("b1101".U){io.result := io.operand2 - io.operand1} // Jump if equal (R1 - R2)
+    is("b1110".U){io.result := io.operand2 - io.operand1} // Jump if less than (R1 - R2)
 
 
 
