@@ -2,10 +2,11 @@ import chisel3._
 
 class DataMemory extends Module {
   val io = IO(new Bundle {
-    val address = Input(UInt (16.W))
-    val dataRead = Output(UInt (32.W))
-    val writeEnable = Input(Bool ())
-    val dataWrite = Input(UInt (32.W))
+    val address = Input(UInt (32.W))
+    val writeMem = Input(Bool())
+    val memRead = Input(Bool())
+    val dataWrite = Input(SInt (32.W))
+    val dataRead = Output(SInt (32.W))
 
     //This signals are used by the tester for loading and dumping the memory content, do not touch
     val testerEnable = Input(Bool ())
@@ -15,7 +16,17 @@ class DataMemory extends Module {
     val testerDataWrite = Input(UInt (32.W))
   })
 
+
   val memory = Mem (65536 , UInt (32.W))
+
+  when(io.writeMem){
+    memory(io.address) := io.dataWrite
+  }
+
+  when(io.memRead){
+    io.dataRead := memory(io.address)
+  }
+
 
   when(io.testerEnable){
     //Tester mode
