@@ -13,19 +13,19 @@ class ProgramMemory extends Module {
     val testerDataWrite = Input(UInt (32.W))
   })
 
-  val memory = Mem (65536 , UInt (32.W))
+  val memory = Mem (65536 , SInt (32.W))
 
   when(io.testerEnable){
     //Tester mode
-    io.testerDataRead := memory.read(io.testerAddress)
+    io.testerDataRead := memory.read(io.testerAddress).asUInt
     io.instructionRead := 0.U(32.W)
     when(io.testerWriteEnable) {
-      memory.write(io.testerAddress, io.testerDataWrite)
+      memory.write(io.testerAddress, io.testerDataWrite.asSInt)
       io.testerDataRead := io.testerDataWrite
     }
   } .otherwise {
     //Normal mode
-    io.instructionRead := memory.read(io.address)
+    io.instructionRead := memory.read(io.address).asUInt
     io.testerDataRead := 0.U(32.W)
   }
 

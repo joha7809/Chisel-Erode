@@ -29,6 +29,7 @@ class CPUTop extends Module {
 
   //Connecting the modules
   programCounter.io.run := io.run
+  io.done := controlUnit.io.halt
   programCounter.io.stop := io.done
   programMemory.io.address := programCounter.io.programCounter
 
@@ -36,15 +37,15 @@ class CPUTop extends Module {
   val register1    = Wire(UInt(5.W))
   val register2    = Wire(UInt(5.W))
   val register3    = Wire(UInt(5.W))
-  val immediate18  = Wire(UInt(18.W))
-  val immediate28  = Wire(UInt(28.W))
-  val outImmediate  = Wire(UInt(32.W))
+  val immediate18  = Wire(SInt(18.W))
+  val immediate28  = Wire(SInt(28.W))
+  val outImmediate  = Wire(SInt(32.W))
 
-  val ReadR1OrR3  = Wire(UInt(32.W))
-  val ReadImedOrR = Wire(UInt(32.W))
+  val ReadR1OrR3  = Wire(SInt(32.W))
+  val ReadImedOrR = Wire(SInt(32.W))
 
-  val ALUMemResult = Wire(UInt(32.W))
-  val WriteData = Wire(UInt(32.W))
+  val ALUMemResult = Wire(SInt(32.W))
+  val WriteData = Wire(SInt(32.W))
 
   val instruction = programMemory.io.instructionRead
 
@@ -53,8 +54,8 @@ class CPUTop extends Module {
   register2 := instruction(22,18)
   register3 := instruction(17,13)
 
-  immediate18 := instruction(17,0)
-  immediate28 := instruction(27,0)
+  immediate18 := instruction(17,0).asSInt
+  immediate28 := instruction(27,0).asSInt
 
   registerFile.io.register1 := register1
   registerFile.io.register2 := register2
@@ -78,14 +79,15 @@ class CPUTop extends Module {
   alu.io.operand2 := ReadImedOrR
 
   //Memory wiring:
-  dataMemory.io.address := registerFile.io.read2
+  dataMemory.io.address := registerFile.io.read2.asUInt
   dataMemory.io.dataWrite := ReadImedOrR
   ALUMemResult := Mux(controlUnit.io.memToReg, dataMemory.io.dataRead, alu.io.result)
   WriteData := Mux(controlUnit.io.loadImmediate, outImmediate, ALUMemResult)
+  registerFile.io.writeData := WriteData
 
   //Jump logic:
-  programCounter.io.programCounterJump := outImmediate.tail(16)
-  programCounter.io.jump := (alu.io.result.head(1) & controlUnit.io.jumpLess) | (alu.io.zero_flag & controlUnit.io.jumpEqual) | controlUnit.io.jumpImmediate
+  programCounter.io.programCounterJump := outImmediate.asUInt(15,0)
+  programCounter.io.jump := ((alu.io.result < 0.S) & controlUnit.io.jumpLess) | (alu.io.zero_flag & controlUnit.io.jumpEqual) | controlUnit.io.jumpImmediate
 
 
   ////////////////////////////////////////////

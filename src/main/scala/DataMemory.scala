@@ -19,7 +19,7 @@ class DataMemory extends Module {
 
   val memory = Mem (65536 , SInt (32.W))
 
-  when(io.writeMem){
+  when(io.writeEnable){
     memory(io.address) := io.dataWrite
   }
 
@@ -30,10 +30,10 @@ class DataMemory extends Module {
 
   when(io.testerEnable){
     //Tester mode
-    io.testerDataRead := memory.read(io.testerAddress)
-    io.dataRead := 0.U(32.W)
+    io.testerDataRead := memory.read(io.testerAddress).asUInt
+    io.dataRead := 0.S(32.W)
     when(io.testerWriteEnable) {
-      memory.write(io.testerAddress, io.testerDataWrite)
+      memory.write(io.testerAddress, io.testerDataWrite.asSInt)
       io.testerDataRead := io.testerDataWrite
     }
   } .otherwise {

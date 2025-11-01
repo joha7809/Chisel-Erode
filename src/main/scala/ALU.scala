@@ -25,6 +25,11 @@ class ALU extends Module {
     is("b0111".U){io.result := ~io.operand1} //Bitwise NOT
     is("b1000".U){io.result := io.operand1 & io.operand2} //Bitwise AND
 
+    is("b1101".U){io.result := io.operand1 - io.operand2} // Jump if equal
+    is("b1110".U){io.result := io.operand1 - io.operand2} // Jump if less than
+
+
+
   }
 
   when(io.result === 0.S){

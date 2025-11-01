@@ -5,22 +5,34 @@ import ujson.IndexedValue.True
 class ControlUnit extends Module {
   val io = IO(new Bundle {
     val opcode = Input(UInt(4.W))
-    val regWrite = Output(0.B)
-    val loadImmediate = Output(0.B)
+    val regWrite = Output(Bool())
+    val loadImmediate = Output(Bool())
 
-    val readR1 = Output(0.B)
-    val readImmediate = Output(0.B)
-    val readMem = Output(0.B)
-    val writeMem = Output(0.B)
-    val memToReg = Output(0.B)
+    val readR1 = Output(Bool())
+    val readImmediate = Output(Bool())
+    val readMem = Output(Bool())
+    val writeMem = Output(Bool())
+    val memToReg = Output(Bool())
 
-    val jumpLess = Output(0.B)
-    val jumpEqual = Output(0.B)
-    val jumpImmediate = Output(0.B)
+    val jumpLess = Output(Bool())
+    val jumpEqual = Output(Bool())
+    val jumpImmediate = Output(Bool())
 
-    val halt = Output(0.B)
+    val halt = Output(Bool())
     //Define the module interface here (inputs/outputs)
   })
+  // default values, when control flags are set we override
+  io.regWrite := false.B
+  io.loadImmediate := false.B
+  io.readR1 := false.B
+  io.readImmediate := false.B
+  io.readMem := false.B
+  io.writeMem := false.B
+  io.memToReg := false.B
+  io.jumpLess := false.B
+  io.jumpEqual := false.B
+  io.jumpImmediate := false.B
+  io.halt := false.B
 
   //Implement this module here
   switch(io.opcode){
@@ -31,7 +43,7 @@ class ControlUnit extends Module {
     is("b0100".U) {io.regWrite := 1.B; io.readImmediate := 1.B} //Add immediate needs immediate (and reg)
     is("b0101".U) {io.regWrite := 1.B; io.readImmediate := 1.B} //Same for subtract immediate
     is("b0110".U){io.regWrite := 1.B} //Bitwise OR only needs to write to reg
-    is("b0111".U){io.regWrite := 1.B; io.readR1} //Bitwise NOT needs to read R1 and write to reg
+    is("b0111".U){io.regWrite := 1.B} //Bitwise NOT needs to read R1 and write to reg
     is("b1000".U){io.regWrite := 1.B} //Bitwise AND only needs to write to reg as well
 
     //Data opcodes:

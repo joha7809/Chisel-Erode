@@ -46,6 +46,21 @@ class ProgramCounterTester extends AnyFlatSpec with ChiselScalatestTester {
         dut.io.programCounterJump.poke(0)
         dut.clock.step(5)
 
+
+        dut.io.jump.poke(false.B)
+        dut.clock.step(1)
+
+
+        dut.io.jump.poke(true.B)
+        dut.io.programCounterJump.poke(11.U)
+        dut.clock.step(1)
+        dut.io.programCounter.expect(11.U)
+
+        dut.io.jump.poke(false.B)
+        dut.clock.step(1)
+        dut.io.programCounter.expect(12.U)
+
+
     }
   }
 }
