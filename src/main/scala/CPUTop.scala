@@ -75,8 +75,8 @@ class CPUTop extends Module {
 
   //ALU wiring:
   alu.io.opcode := opcode
-  alu.io.operand1 := registerFile.io.read2
-  alu.io.operand2 := ReadImedOrR
+  alu.io.operand1 := registerFile.io.read2 // Always R2
+  alu.io.operand2 := ReadImedOrR // R1, R3 or Imm
 
   //Memory wiring:
   dataMemory.io.address := registerFile.io.read2.asUInt

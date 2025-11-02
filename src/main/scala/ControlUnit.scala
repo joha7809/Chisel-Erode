@@ -52,7 +52,9 @@ class ControlUnit extends Module {
     is("b1011".U){io.readR1 := 1.B; io.writeMem := 1.B}
 
     //Jump opcodes:
-    is("b1100".U){io.jumpImmediate := 1.B}
+    // jumpImmediate ensures we get correct immediate, readImmediate just passes to ALU so this is not needed. With other flags false, we ensure the immediate wires into the PC as the next instr
+    is("b1100".U){io.jumpImmediate := 1.B}     
+    // For the next two instructions we need to read R1, otherwise R3 is passed along which is corrupt data.
     is("b1101".U){io.jumpEqual := 1.B; io.readR1 := 1.B}  // JEQ needs to read R1 for comparison
     is("b1110".U){io.jumpLess := 1.B; io.readR1 := 1.B}   // JLT needs to read R1 for comparison
 
