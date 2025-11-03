@@ -45,10 +45,14 @@ class ProgramCounterTester extends AnyFlatSpec with ChiselScalatestTester {
         dut.io.stop.poke(false.B)
         dut.io.programCounterJump.poke(0)
         dut.clock.step(5)
+        // Since 30 was loaded we ran 5 times, we expect 35
+        dut.io.programCounter.expect(35.U)
 
 
         dut.io.jump.poke(false.B)
         dut.clock.step(1)
+        dut.io.programCounter.expect(36.U)
+
 
 
         dut.io.jump.poke(true.B)
