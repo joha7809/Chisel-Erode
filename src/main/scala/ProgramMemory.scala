@@ -2,7 +2,7 @@ import chisel3._
 
 class ProgramMemory extends Module {
   val io = IO(new Bundle {
-    val address = Input(UInt (16.W))
+    val address = Input(UInt (16.W)) //TODO: make 32 bit, and cast in tests to 16 bit (MAYBE)
     val instructionRead = Output(UInt (32.W))
 
     //This signals are used by the tester for loading and dumping the memory content, do not touch
