@@ -43,7 +43,7 @@ class ControlUnit extends Module {
     is("b0100".U) {io.regWrite := 1.B; io.readImmediate := 1.B} //Add immediate needs immediate (and reg)
     is("b0101".U) {io.regWrite := 1.B; io.readImmediate := 1.B} //Same for subtract immediate
     is("b0110".U){io.regWrite := 1.B} //Bitwise OR only needs to write to reg
-    is("b0111".U){io.regWrite := 1.B} //Bitwise NOT needs to read R1 and write to reg
+    is("b0111".U){io.regWrite := 1.B} //Bitwise NOT needs to write to reg
     is("b1000".U){io.regWrite := 1.B} //Bitwise AND only needs to write to reg as well
 
     //Data opcodes:
