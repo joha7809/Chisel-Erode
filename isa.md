@@ -15,23 +15,61 @@
 
 ## Data Transfer Instructions
 
-| Instruction    | Syntax (Example) | Meaning (Example) |
-| -------------- | ---------------- | ----------------- |
-| Load immediate | `LI R1, 6`       | `R1 = 6`          |
-| Load data      | `LD R1, R2`      | `R1 = memory(R2)` |
-| Store data     | `SD R1, R2`      | `memory(R2) = R1` |
+| Instruction    | Syntax (Example) | Meaning (Example)      |
+| -------------- | ---------------- | ---------------------- |
+| Load immediate | `LI R1, 6`       | `R1 = 6`               |
+| Load data      | `LD R1, R2`      | `R1 = read memory(R2)` |
+| Store data     | `SD R1, R2`      | `set memory(R2) = R1`  |
 
 ## Control and Flow Instructions
 
-| Instruction          | Syntax (Example)  | Meaning (Example)             |
-| -------------------- | ----------------- | ----------------------------- |
-| Jump                 | `JR 7`            | `goto inst. 7`                |
-| Jump if equal        | `JEQ R2, R3, 8`   | `if (R2 == R3) goto inst. 8`  |
-| Jump if less than    | `JLTV R2, 19, 9`  | `if (R2 < 19) goto inst. 9`   |
-| Jump if greater than | `JGT R2, R3, 10`  | `if (R2 > R3) goto inst. 10`  |
-| Jump if eq. to value | `JETV R2, 10, 15` | `if (R2 == 10) goto inst. 15` |
-| No operation         | `NOP`             | do nothing                    |
-| End execution        | `END`             | terminates execution          |
+| Instruction    | Syntax (Example) | Meaning (Example)            |
+| -------------- | ---------------- | ---------------------------- |
+| Jump           | `JR 7`           | `goto inst. 7`               |
+| Jump if equal  | `JEQ R2, R3, 8`  | `if (R2 == R3) goto inst. 8` |
+| Jump less than | `JLT R2, R3, 10` | `if (R2 < R3) goto inst. 10` |
+| No operation   | `NOP`            | do nothing                   |
+| End execution  | `END`            | terminates execution         |
+
+## Machine Code Types
+
+Below are the different formats of machine code instructions, showing how bits are allocated for each field.
+
+| **Type** | **Format (Bit Allocation)**                                   |
+| :------- | :------------------------------------------------------------ |
+| **R**    | `OPCODE(4)` · `REGISTER(5)` · `REGISTER(5)` · `REGISTER(5)`   |
+| **I**    | `OPCODE(4)` · `REGISTER(5)` · `REGISTER(5)` · `IMMEDIATE(18)` |
+| **J**    | `OPCODE(4)` · `IMMEDIATE(28)`                                 |
+
+> 💡 _All bit widths are shown in parentheses. "IMMEDIATE" fields represent literal constant values encoded directly in the instruction._
+> **Note:**  
+> `LI` is of type **I**, where the second register is simply encoded as `00000`.  
+> `NOT`, `LD`, and `SD` are of type **R**, where the last register is encoded as `0`.
+
+## OPCODE Bytes
+
+| Instruction | OPCODE (binary) |
+| ----------- | --------------- |
+| NOP         | `0b0000`        |
+| ADD         | `0b0001`        |
+| SUB         | `0b0010`        |
+| MULT        | `0b0011`        |
+| ADDI        | `0b0100`        |
+| SUBI        | `0b0101`        |
+| OR          | `0b0110`        |
+| NOT         | `0b0111`        |
+| AND         | `0b1000`        |
+| LI          | `0b1001`        |
+| LD          | `0b1010`        |
+| SD          | `0b1011`        |
+| JR          | `0b1100`        |
+| JEQ         | `0b1101`        |
+| JLT         | `0b1110`        |
+| END         | `0b1111`        |
+
+## Signed vs Unsigned immediates
+
+All immediates except the immediate in a jump instruction are signed. This is enforced by the encoder.
 
 ## Labels
 
@@ -42,25 +80,10 @@ Example:
 ```
 JEQ R1, R2 end
 start:          # This is a label
-    ADD R1, R2, R3
+    ADD R1, R2, R3;
     JEQ R1, R4, end
     SUB R1, R1, R5
 
 end:            # Another label
     END
 ```
-
-# Machine Code Types
-
-Below are the different formats of machine code instructions, showing how bits are allocated for each field.
-
-| **Type** | **Format (Bit Allocation)**                                     |
-| :------- | :-------------------------------------------------------------- |
-| **R2**   | `OPCODE(5)` · `REGISTER(5)` · `REGISTER(5)`                     |
-| **R3**   | `OPCODE(5)` · `REGISTER(5)` · `REGISTER(5)` · `REGISTER(5)`     |
-| **RI**   | `OPCODE(5)` · `REGISTER(5)` · `IMMEDIATE(22)`                   |
-| **RRI**  | `OPCODE(5)` · `REGISTER(5)` · `REGISTER(5)` · `IMMEDIATE(17)`   |
-| **RII**  | `OPCODE(5)` · `REGISTER(5)` · `IMMEDIATE(11)` · `IMMEDIATE(11)` |
-| **I**    | `OPCODE(5)` · `IMMEDIATE(27)`                                   |
-
-> 💡 _All bit widths are shown in parentheses. "IMMEDIATE" fields represent literal constant values encoded directly in the instruction._
