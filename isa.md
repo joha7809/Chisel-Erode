@@ -41,7 +41,7 @@ Below are the different formats of machine code instructions, showing how bits a
 | **I**    | `OPCODE(4)` · `REGISTER(5)` · `REGISTER(5)` · `IMMEDIATE(18)` |
 | **J**    | `OPCODE(4)` · `IMMEDIATE(28)`                                 |
 
-> 💡 _All bit widths are shown in parentheses. "IMMEDIATE" fields represent literal constant values encoded directly in the instruction._
+> _All bit widths are shown in parentheses. "IMMEDIATE" fields represent literal constant values encoded directly in the instruction._
 > **Note:**  
 > `LI` is of type **I**, where the second register is simply encoded as `00000`.  
 > `NOT`, `LD`, and `SD` are of type **R**, where the last register is encoded as `0`.
