@@ -7,15 +7,15 @@ class RegisterFileTester extends AnyFlatSpec with ChiselScalatestTester {
   "RegisterFileTester" should "pass" in {
     test(new RegisterFile())
       .withAnnotations(Seq(WriteVcdAnnotation)) { dut =>
-
         // Write 37 to register 4
         dut.io.register1.poke(4.U)
         dut.io.writeData.poke(37.S)
         dut.io.regWrite.poke(true.B)
-        dut.clock.step() // perform the write on rising edge
+        dut.clock.step()
 
         // Now disable writing
         dut.io.regWrite.poke(false.B)
+        dut.io.writeData.poke(17.S) // This should not be written
 
         // Read from register 4 and 5 and 6
         dut.io.register1.poke(4.U)
@@ -33,4 +33,3 @@ class RegisterFileTester extends AnyFlatSpec with ChiselScalatestTester {
       }
   }
 }
-
